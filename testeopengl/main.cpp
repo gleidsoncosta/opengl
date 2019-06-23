@@ -18,17 +18,23 @@
 	Tutorial 05 - uniform variables
 */
 
+
+
 #include <stdio.h>
-#include <string.h>
+#include <string>
+
 
 #include <math.h>
+
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 
-#include "Include/ogldev_math_3d.h"
 #include "Include/ogldev_util.h"
+#include "Include/ogldev_math_3d.h"
+
 
 GLuint VBO;
+GLuint IBO;
 GLuint gWorldLocation;
 
 
@@ -45,18 +51,20 @@ static void RenderSceneCB ()
 
 	Matrix4f World;
 
-	World.m[0][0] = 1.0f; World.m[0][1] = 0.0f; World.m[0][2] = 0.0f; World.m[0][3] = sinf (Scale);
-	World.m[1][0] = 0.0f; World.m[1][1] = 1.0f; World.m[1][2] = 0.0f; World.m[1][3] = 0.0f;
-	World.m[2][0] = 0.0f; World.m[2][1] = 0.0f; World.m[2][2] = 1.0f; World.m[2][3] = 0.0f;
-	World.m[3][0] = 0.0f; World.m[3][1] = 0.0f; World.m[3][2] = 0.0f; World.m[3][3] = 1.0f;
+	World.m[0][0] = cosf (Scale); World.m[0][1] = 0.0f; World.m[0][2] = -sinf (Scale); World.m[0][3] = 0.0f;
+	World.m[1][0] = 0.0;         World.m[1][1] = 1.0f; World.m[1][2] = 0.0f; World.m[1][3] = 0.0f;
+	World.m[2][0] = sinf (Scale); World.m[2][1] = 0.0f; World.m[2][2] = cosf (Scale); World.m[2][3] = 0.0f;
+	World.m[3][0] = 0.0f;        World.m[3][1] = 0.0f; World.m[3][2] = 0.0f; World.m[3][3] = 1.0f;
 
 	glUniformMatrix4fv (gWorldLocation, 1, GL_TRUE, &World.m[0][0]);
 
 	glEnableVertexAttribArray (0);
 	glBindBuffer (GL_ARRAY_BUFFER, VBO);
 	glVertexAttribPointer (0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, IBO);
 
-	glDrawArrays (GL_TRIANGLES, 0, 3);
+
+	glDrawElements (GL_TRIANGLES, 12, GL_UNSIGNED_INT, 0);
 
 	glDisableVertexAttribArray (0);
 
@@ -72,15 +80,29 @@ static void InitializeGlutCallbacks ()
 
 static void CreateVertexBuffer ()
 {
-	Vector3f Vertices[3];
+	Vector3f Vertices[4];
 	Vertices[0] = Vector3f (-1.0f, -1.0f, 0.0f);
-	Vertices[1] = Vector3f (1.0f, -1.0f, 0.0f);
-	Vertices[2] = Vector3f (0.0f, 1.0f, 0.0f);
+	Vertices[1] = Vector3f (0.0f, -1.0f, 1.0f);
+	Vertices[2] = Vector3f (1.0f, -1.0f, 0.0f);
+	Vertices[3] = Vector3f (0.0f, 1.0f, 0.0f);
 
 	glGenBuffers (1, &VBO);
 	glBindBuffer (GL_ARRAY_BUFFER, VBO);
 	glBufferData (GL_ARRAY_BUFFER, sizeof (Vertices), Vertices, GL_STATIC_DRAW);
 }
+
+static void CreateIndexBuffer ()
+{
+	unsigned int Indices[] = { 0, 3, 1,
+							   1, 3, 2,
+							   2, 3, 0,
+							   0, 1, 2 };
+
+	glGenBuffers (1, &IBO);
+	glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, IBO);
+	glBufferData (GL_ELEMENT_ARRAY_BUFFER, sizeof (Indices), Indices, GL_STATIC_DRAW);
+}
+
 
 static void AddShader (GLuint ShaderProgram, const char* pShaderText, GLenum ShaderType)
 {
@@ -120,8 +142,8 @@ static void CompileShaders ()
 
 	string vs, fs;
 
-	fs = "#version 330 \n  \n out vec4 FragColor; \n  \n void main() \n { \n     FragColor = vec4(1.0, 0.0, 0.0, 1.0); \n } \n ";
-	vs = "#version 330 \n  \n layout (location = 0) in vec3 Position; \n  \n uniform mat4 gWorld; \n  \n void main() \n { \n     gl_Position = gWorld * vec4(Position, 1.0); \n } \n ";
+	vs = "#version 330 \n  \n layout (location = 0) in vec3 Position; \n  \n uniform mat4 gWorld; \n  \n out vec4 Color; \n  \n void main() \n { \n     gl_Position = gWorld * vec4(Position, 1.0); \n     Color = vec4(clamp(Position, 0.0, 1.0), 1.0); \n } \n ";
+	fs = "#version 330 \n  \n in vec4 Color; \n  \n out vec4 FragColor; \n  \n void main() \n { \n     FragColor = Color; \n } \n ";
 
 	AddShader (ShaderProgram, vs.c_str (), GL_VERTEX_SHADER);
 	AddShader (ShaderProgram, fs.c_str (), GL_FRAGMENT_SHADER);
@@ -173,6 +195,7 @@ int main (int argc, char** argv)
 	glClearColor (0.0f, 0.0f, 0.0f, 0.0f);
 
 	CreateVertexBuffer ();
+	CreateIndexBuffer ();
 
 	CompileShaders ();
 
