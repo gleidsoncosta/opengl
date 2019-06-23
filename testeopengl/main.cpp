@@ -1,111 +1,182 @@
-#include<Windows.h>    
-// first include Windows.h header file which is required    
-#include<stdio.h>    
-#include<gl/GL.h>   // GL.h header file    
-#include<gl/GLU.h> // GLU.h header file    
-#include<gl/glut.h>  // glut.h header file from freeglut\include\GL folder    
-#include<conio.h>    
-#include<stdio.h>    
-#include<math.h>    
-#include<string.h>    
-// Init_OpenGL() function    
-void Init_OpenGL (){
-	// set background color to Black    
-	glClearColor ( 0.0, 0.0, 0.0, 0.0 );
-	// set shade model to Flat    
-	glShadeModel ( GL_FLAT );
-}
+/*
 
-// Display_Objects() function    
-void Display_Objects ( void ){
-	// clearing the window or remove all drawn objects    
-	glClear ( GL_COLOR_BUFFER_BIT );
-	/*glPushMatrix(), which copies the current matrix and adds
-	the copy to the top of the stack, and
-	glPopMatrix(), which discards the top matrix on the stack*/
-	glPushMatrix ();
-	//the glTranslatef() routine in the display list alters the position of the next object to be drawn    
-	glTranslatef ( 0.0, 0.0, 0.0 );
-	// set color to object glColor3f(red,green,blue);    
-	glColor3f ( 1.0, 0.8, 0.0 );
-	// draw a wire tea pot    
-	glutWireTeapot ( 1.0 );
+	Copyright 2010 Etay Meiri
 
-	// draw a wire sphere    
-	glTranslatef ( -2.5, 0.0, 0.0 );
-	glColor3f ( 0.0, 1.0, 0.0 );
-	glutWireSphere ( 0.8, 30, 30 );
+	This program is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
 
-	// draw a wire cone    
-	glTranslatef ( 5.0, 0.0, 0.0 );
-	glColor3f ( 0.0, 0.6, 1.0 );
-	glutWireCone ( 0.8, 1.5, 20, 20 );
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-	// draw a wire cube    
-	glTranslatef ( -1.0, 1.4, 0.0 );
-	glColor3f ( 1.0, 0.3, 0.0 );
-	glutWireCube ( 1.0 );
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-	// draw a wire torus    
-	glTranslatef ( -3.0, 0.4, 0.0 );
-	glColor3f ( 1.0, 0.3, 1.0 );
-	glutWireTorus ( 0.2, 0.6, 20, 20 );
+	Tutorial 05 - uniform variables
+*/
 
-	// draw a text    
-	glTranslatef ( -2.5, -4.0, 0.0 );
+#include <stdio.h>
+#include <string.h>
 
-	char str[] = { "OpenGL Demo in Visual C++" };
+#include <math.h>
+#include <GL/glew.h>
+#include <GL/freeglut.h>
 
-	glColor3f ( 1.0, 1.0, 1.0 );
-	// set position to text    
-	glRasterPos2f ( 2.0, 0.0 );
+#include "Include/ogldev_math_3d.h"
+#include "Include/ogldev_util.h"
 
-	for ( int i = 0; i < strlen ( str ); i++ ){
-		// draw each character    
-		glutBitmapCharacter ( GLUT_BITMAP_TIMES_ROMAN_24, str[i] );
-	}
+GLuint VBO;
+GLuint gWorldLocation;
 
-	//you can draw many objects here like polygons,lines,triangles etc    
 
-	glPopMatrix ();
+const char* pVSFileName = "shader.vs";
+const char* pFSFileName = "shader.fs";
+
+static void RenderSceneCB ()
+{
+	glClear (GL_COLOR_BUFFER_BIT);
+
+	static float Scale = 0.0f;
+
+	Scale += 0.001f;
+
+	Matrix4f World;
+
+	World.m[0][0] = 1.0f; World.m[0][1] = 0.0f; World.m[0][2] = 0.0f; World.m[0][3] = sinf (Scale);
+	World.m[1][0] = 0.0f; World.m[1][1] = 1.0f; World.m[1][2] = 0.0f; World.m[1][3] = 0.0f;
+	World.m[2][0] = 0.0f; World.m[2][1] = 0.0f; World.m[2][2] = 1.0f; World.m[2][3] = 0.0f;
+	World.m[3][0] = 0.0f; World.m[3][1] = 0.0f; World.m[3][2] = 0.0f; World.m[3][3] = 1.0f;
+
+	glUniformMatrix4fv (gWorldLocation, 1, GL_TRUE, &World.m[0][0]);
+
+	glEnableVertexAttribArray (0);
+	glBindBuffer (GL_ARRAY_BUFFER, VBO);
+	glVertexAttribPointer (0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+	glDrawArrays (GL_TRIANGLES, 0, 3);
+
+	glDisableVertexAttribArray (0);
+
 	glutSwapBuffers ();
 }
-// Reshape() function    
-void Reshape ( int w, int h ){
-	//adjusts the pixel rectangle for drawing to be the entire new window    
-	glViewport ( 0, 0, ( GLsizei ) w, ( GLsizei ) h );
-	//matrix specifies the projection transformation    
-	glMatrixMode ( GL_PROJECTION );
-	// load the identity of matrix by clearing it.    
-	glLoadIdentity ();
-	gluPerspective ( 60.0, ( GLfloat ) w / ( GLfloat ) h, 1.0, 20.0 );
-	//matrix specifies the modelview transformation    
-	glMatrixMode ( GL_MODELVIEW );
-	// again  load the identity of matrix    
-	glLoadIdentity ();
-	// gluLookAt() this function is used to specify the eye.    
-	// it is used to specify the coordinates to view objects from a specific position    
-	gluLookAt ( -0.3, 0.5, 5.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0 );
+
+
+static void InitializeGlutCallbacks ()
+{
+	glutDisplayFunc (RenderSceneCB);
+	glutIdleFunc (RenderSceneCB);
 }
 
-// main function    
-int main ( int argc, char** argv ){
-	// initialize glut    
-	glutInit ( &argc, argv );
-	glutInitDisplayMode ( GLUT_DOUBLE | GLUT_RGB );
-	// set window size    
-	glutInitWindowSize ( 700, 500 );
-	// set window location    
-	glutInitWindowPosition ( 250, 50 );
-	// create window with window text    
-	glutCreateWindow ( "OpenGL Demo" );
-	// call Init_OpenGL() function    
-	Init_OpenGL ();
-	// call glutDisplayFunc() function & pass parameter as Display_Objects() function    
-	glutDisplayFunc ( Display_Objects );
-	// call glutReshapeFunc() function & pass parameter as Reshape() function    
-	glutReshapeFunc ( Reshape );
-	//glutMainLoop() is used to redisplay the objects    
+static void CreateVertexBuffer ()
+{
+	Vector3f Vertices[3];
+	Vertices[0] = Vector3f (-1.0f, -1.0f, 0.0f);
+	Vertices[1] = Vector3f (1.0f, -1.0f, 0.0f);
+	Vertices[2] = Vector3f (0.0f, 1.0f, 0.0f);
+
+	glGenBuffers (1, &VBO);
+	glBindBuffer (GL_ARRAY_BUFFER, VBO);
+	glBufferData (GL_ARRAY_BUFFER, sizeof (Vertices), Vertices, GL_STATIC_DRAW);
+}
+
+static void AddShader (GLuint ShaderProgram, const char* pShaderText, GLenum ShaderType)
+{
+	GLuint ShaderObj = glCreateShader (ShaderType);
+
+	if (ShaderObj == 0) {
+		fprintf (stderr, "Error creating shader type %d\n", ShaderType);
+		exit (1);
+	}
+
+	const GLchar* p[1];
+	p[0] = pShaderText;
+	GLint Lengths[1];
+	Lengths[0] = strlen (pShaderText);
+	glShaderSource (ShaderObj, 1, p, Lengths);
+	glCompileShader (ShaderObj);
+	GLint success;
+	glGetShaderiv (ShaderObj, GL_COMPILE_STATUS, &success);
+	if (!success) {
+		GLchar InfoLog[1024];
+		glGetShaderInfoLog (ShaderObj, 1024, NULL, InfoLog);
+		fprintf (stderr, "Error compiling shader type %d: '%s'\n", ShaderType, InfoLog);
+		exit (1);
+	}
+
+	glAttachShader (ShaderProgram, ShaderObj);
+}
+
+static void CompileShaders ()
+{
+	GLuint ShaderProgram = glCreateProgram ();
+
+	if (ShaderProgram == 0) {
+		fprintf (stderr, "Error creating shader program\n");
+		exit (1);
+	}
+
+	string vs, fs;
+
+	fs = "#version 330 \n  \n out vec4 FragColor; \n  \n void main() \n { \n     FragColor = vec4(1.0, 0.0, 0.0, 1.0); \n } \n ";
+	vs = "#version 330 \n  \n layout (location = 0) in vec3 Position; \n  \n uniform mat4 gWorld; \n  \n void main() \n { \n     gl_Position = gWorld * vec4(Position, 1.0); \n } \n ";
+
+	AddShader (ShaderProgram, vs.c_str (), GL_VERTEX_SHADER);
+	AddShader (ShaderProgram, fs.c_str (), GL_FRAGMENT_SHADER);
+
+	GLint Success = 0;
+	GLchar ErrorLog[1024] = { 0 };
+
+	glLinkProgram (ShaderProgram);
+	glGetProgramiv (ShaderProgram, GL_LINK_STATUS, &Success);
+	if (Success == 0) {
+		glGetProgramInfoLog (ShaderProgram, sizeof (ErrorLog), NULL, ErrorLog);
+		fprintf (stderr, "Error linking shader program: '%s'\n", ErrorLog);
+		exit (1);
+	}
+
+	glValidateProgram (ShaderProgram);
+	glGetProgramiv (ShaderProgram, GL_VALIDATE_STATUS, &Success);
+	if (!Success) {
+		glGetProgramInfoLog (ShaderProgram, sizeof (ErrorLog), NULL, ErrorLog);
+		fprintf (stderr, "Invalid shader program: '%s'\n", ErrorLog);
+		exit (1);
+	}
+
+	glUseProgram (ShaderProgram);
+
+	gWorldLocation = glGetUniformLocation (ShaderProgram, "gWorld");
+	assert (gWorldLocation != 0xFFFFFFFF);
+}
+
+int main (int argc, char** argv)
+{
+	glutInit (&argc, argv);
+	glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGBA);
+	glutInitWindowSize (1024, 768);
+	glutInitWindowPosition (100, 100);
+	glutCreateWindow ("Tutorial 05");
+
+	InitializeGlutCallbacks ();
+
+	// Must be done after glut is initialized!
+	GLenum res = glewInit ();
+	if (res != GLEW_OK) {
+		fprintf (stderr, "Error: '%s'\n", glewGetErrorString (res));
+		return 1;
+	}
+
+	printf ("GL version: %s\n", glGetString (GL_VERSION));
+
+	glClearColor (0.0f, 0.0f, 0.0f, 0.0f);
+
+	CreateVertexBuffer ();
+
+	CompileShaders ();
+
 	glutMainLoop ();
+
 	return 0;
 }
