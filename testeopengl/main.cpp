@@ -1,24 +1,3 @@
-/*
-
-	Copyright 2010 Etay Meiri
-
-	This program is free software: you can redistribute it and/or modify
-	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
-
-	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-	Tutorial 05 - uniform variables
-*/
-
-
 
 #include <stdio.h>
 #include <string>
@@ -30,8 +9,12 @@
 #include <GL/freeglut.h>
 
 #include "Include/ogldev_util.h"
-#include "Include/ogldev_math_3d.h"
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+using namespace glm;
 
 GLuint VBO;
 GLuint IBO;
@@ -45,18 +28,17 @@ static void RenderSceneCB ()
 {
 	glClear (GL_COLOR_BUFFER_BIT);
 
-	static float Scale = 0.0f;
+	static float Scale = 1.0f;
 
 	Scale += 0.001f;
 
-	Matrix4f World;
+	mat4 trans = mat4 (1.0f);
+	trans = rotate (trans, radians (Scale*10.0f), vec3 (0.5f, 0.1f, 1.0f));
+	vec4 result = trans * vec4 (1.0f, 0.0f, 0.0f, 1.0f);
+	
+	//mat4 view = lookAt (vec3 (Scale*1.0f, Scale*1.0f, Scale*1.0f), vec3 (0.0f, 0.0f, 0.0f), vec3 (0.0f, 0.0f, 1.0f));
 
-	World.m[0][0] = cosf (Scale); World.m[0][1] = 0.0f; World.m[0][2] = -sinf (Scale); World.m[0][3] = 0.0f;
-	World.m[1][0] = 0.0;         World.m[1][1] = 1.0f; World.m[1][2] = 0.0f; World.m[1][3] = 0.0f;
-	World.m[2][0] = sinf (Scale); World.m[2][1] = 0.0f; World.m[2][2] = cosf (Scale); World.m[2][3] = 0.0f;
-	World.m[3][0] = 0.0f;        World.m[3][1] = 0.0f; World.m[3][2] = 0.0f; World.m[3][3] = 1.0f;
-
-	glUniformMatrix4fv (gWorldLocation, 1, GL_TRUE, &World.m[0][0]);
+	glUniformMatrix4fv (gWorldLocation, 1, GL_TRUE, value_ptr(trans));
 
 	glEnableVertexAttribArray (0);
 	glBindBuffer (GL_ARRAY_BUFFER, VBO);
@@ -80,11 +62,11 @@ static void InitializeGlutCallbacks ()
 
 static void CreateVertexBuffer ()
 {
-	Vector3f Vertices[4];
-	Vertices[0] = Vector3f (-1.0f, -1.0f, 0.0f);
-	Vertices[1] = Vector3f (0.0f, -1.0f, 1.0f);
-	Vertices[2] = Vector3f (1.0f, -1.0f, 0.0f);
-	Vertices[3] = Vector3f (0.0f, 1.0f, 0.0f);
+	vec3 Vertices[4];
+	Vertices[0] = vec3 (-1.0f, -1.0f, 0.0f);
+	Vertices[1] = vec3 (0.0f, -1.0f, 1.0f);
+	Vertices[2] = vec3 (1.0f, -1.0f, 0.0f);
+	Vertices[3] = vec3 (0.0f, 1.0f, 0.0f);
 
 	glGenBuffers (1, &VBO);
 	glBindBuffer (GL_ARRAY_BUFFER, VBO);
@@ -142,8 +124,37 @@ static void CompileShaders ()
 
 	string vs, fs;
 
-	vs = "#version 330 \n  \n layout (location = 0) in vec3 Position; \n  \n uniform mat4 gWorld; \n  \n out vec4 Color; \n  \n void main() \n { \n     gl_Position = gWorld * vec4(Position, 1.0); \n     Color = vec4(clamp(Position, 0.0, 1.0), 1.0); \n } \n ";
-	fs = "#version 330 \n  \n in vec4 Color; \n  \n out vec4 FragColor; \n  \n void main() \n { \n     FragColor = Color; \n } \n ";
+	vs = R"(
+			#version 330
+
+layout (location = 0) in vec3 Position;
+
+uniform mat4 gWorld;
+
+out vec4 Color;
+
+void main()
+{
+    gl_Position = gWorld * vec4(Position, 1.0);
+    Color = vec4(clamp(Position, 0.0, 1.0), 1.0);
+}
+)";
+
+
+
+	fs = R"(
+				#version 330
+
+in vec4 Color;
+
+out vec4 FragColor;
+
+void main()
+{
+    FragColor = Color;
+}
+
+				)";
 
 	AddShader (ShaderProgram, vs.c_str (), GL_VERTEX_SHADER);
 	AddShader (ShaderProgram, fs.c_str (), GL_FRAGMENT_SHADER);
