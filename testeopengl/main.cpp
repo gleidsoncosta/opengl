@@ -1,11 +1,10 @@
-
 #include <stdio.h>
 #include <string>
-
 
 #include <math.h>
 
 #include <GL/glew.h>
+#include <soil.h>
 #include <GL/freeglut.h>
 
 #include "Include/ogldev_util.h"
@@ -17,184 +16,138 @@
 using namespace glm;
 
 GLuint VBO;
-GLuint IBO;
-GLuint gWorldLocation;
+GLuint EBO;
+
+GLuint model;
+GLuint proj;
+GLuint view;
 
 
-const char* pVSFileName = "shader.vs";
-const char* pFSFileName = "shader.fs";
-
+//RENDERIZAR AS CENAS
 static void RenderSceneCB ()
 {
-	glClear (GL_COLOR_BUFFER_BIT);
+	//FIXO
+	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	static float Scale = 1.0f;
 
-	Scale += 0.001f;
-
+	//OBJETO
 	mat4 trans = mat4 (1.0f);
-	trans = rotate (trans, radians (Scale*10.0f), vec3 (0.5f, 0.1f, 1.0f));
-	vec4 result = trans * vec4 (1.0f, 0.0f, 0.0f, 1.0f);
+	trans = rotate (trans, radians (180.0f), vec3 (0.0f, 0.0f, 1.0f));
 	
-	//mat4 view = lookAt (vec3 (Scale*1.0f, Scale*1.0f, Scale*1.0f), vec3 (0.0f, 0.0f, 0.0f), vec3 (0.0f, 0.0f, 1.0f));
+	glUniformMatrix4fv (model, 1, GL_FALSE, value_ptr (trans));
 
-	glUniformMatrix4fv (gWorldLocation, 1, GL_TRUE, value_ptr(trans));
+	//VISUALIZANDO
+	mat4 look = lookAt (
+		vec3 (1.2f, 1.2f, 1.2f), //posicao da camera
+		vec3 (0.0f, 0.0f, 0.0f), //ponto centralizado da camera (pra onde esta olhando)
+		vec3 (0.0f, 0.0f, 1.0f) // up axis, definido pelo ponto Z. xy é o plano e Z altura
+	);
 
-	glEnableVertexAttribArray (0);
-	glBindBuffer (GL_ARRAY_BUFFER, VBO);
-	glVertexAttribPointer (0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, IBO);
+	glUniformMatrix4fv (view, 1, GL_FALSE, value_ptr (look));
+
+	//MUNDO REAL
+	mat4 projec = perspective (glm::radians (45.0f), 800.0f / 600.0f, 1.0f, 10.0f);
+	glUniformMatrix4fv (proj, 1, GL_FALSE, value_ptr (projec));
 
 
-	glDrawElements (GL_TRIANGLES, 12, GL_UNSIGNED_INT, 0);
+	// Draw a rectangle from the 2 triangles using 6 indices
+	//glDrawElements (GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+	glDrawArrays (GL_TRIANGLES, 0, 36);
 
-	glDisableVertexAttribArray (0);
-
+	//FIXO
 	glutSwapBuffers ();
 }
 
-
+//Inicializar as cenas de renderização
 static void InitializeGlutCallbacks ()
 {
 	glutDisplayFunc (RenderSceneCB);
 	glutIdleFunc (RenderSceneCB);
 }
 
+//criar os vertices e inserir dentro do buffer de vertices
 static void CreateVertexBuffer ()
 {
-	vec3 Vertices[4];
-	Vertices[0] = vec3 (-1.0f, -1.0f, 0.0f);
-	Vertices[1] = vec3 (0.0f, -1.0f, 1.0f);
-	Vertices[2] = vec3 (1.0f, -1.0f, 0.0f);
-	Vertices[3] = vec3 (0.0f, 1.0f, 0.0f);
+	GLfloat vertices[] = {
+		/*//  Position      Color             Texcoords
+		-0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, // Top-left
+		 0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // Top-right
+		 0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, // Bottom-right
+		-0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f  // Bottom-left*/
+		-0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		 0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		 0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		 0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+		-0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+
+		-0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		 0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		 0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		 0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+		-0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+
+		-0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+		-0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+		-0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+
+		 0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		 0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		 0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+		 0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+		 0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		 0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+
+		-0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+		 0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		 0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		 0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+		 0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		 0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		 0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f
+	};
 
 	glGenBuffers (1, &VBO);
 	glBindBuffer (GL_ARRAY_BUFFER, VBO);
-	glBufferData (GL_ARRAY_BUFFER, sizeof (Vertices), Vertices, GL_STATIC_DRAW);
+	glBufferData (GL_ARRAY_BUFFER, sizeof (vertices), vertices, GL_STATIC_DRAW);
 }
 
+//inserir o controle de conexão de vertices pelos indices
 static void CreateIndexBuffer ()
 {
-	unsigned int Indices[] = { 0, 3, 1,
-							   1, 3, 2,
-							   2, 3, 0,
-							   0, 1, 2 };
+	GLuint elements[] = {
+		0, 1, 2,
+		2, 3, 0
+	};
 
-	glGenBuffers (1, &IBO);
-	glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, IBO);
-	glBufferData (GL_ELEMENT_ARRAY_BUFFER, sizeof (Indices), Indices, GL_STATIC_DRAW);
-}
-
-
-static void AddShader (GLuint ShaderProgram, const char* pShaderText, GLenum ShaderType)
-{
-	GLuint ShaderObj = glCreateShader (ShaderType);
-
-	if (ShaderObj == 0) {
-		fprintf (stderr, "Error creating shader type %d\n", ShaderType);
-		exit (1);
-	}
-
-	const GLchar* p[1];
-	p[0] = pShaderText;
-	GLint Lengths[1];
-	Lengths[0] = strlen (pShaderText);
-	glShaderSource (ShaderObj, 1, p, Lengths);
-	glCompileShader (ShaderObj);
-	GLint success;
-	glGetShaderiv (ShaderObj, GL_COMPILE_STATUS, &success);
-	if (!success) {
-		GLchar InfoLog[1024];
-		glGetShaderInfoLog (ShaderObj, 1024, NULL, InfoLog);
-		fprintf (stderr, "Error compiling shader type %d: '%s'\n", ShaderType, InfoLog);
-		exit (1);
-	}
-
-	glAttachShader (ShaderProgram, ShaderObj);
-}
-
-static void CompileShaders ()
-{
-	GLuint ShaderProgram = glCreateProgram ();
-
-	if (ShaderProgram == 0) {
-		fprintf (stderr, "Error creating shader program\n");
-		exit (1);
-	}
-
-	string vs, fs;
-
-	vs = R"(
-			#version 330
-
-layout (location = 0) in vec3 Position;
-
-uniform mat4 gWorld;
-
-out vec4 Color;
-
-void main()
-{
-    gl_Position = gWorld * vec4(Position, 1.0);
-    Color = vec4(clamp(Position, 0.0, 1.0), 1.0);
-}
-)";
-
-
-
-	fs = R"(
-				#version 330
-
-in vec4 Color;
-
-out vec4 FragColor;
-
-void main()
-{
-    FragColor = Color;
-}
-
-				)";
-
-	AddShader (ShaderProgram, vs.c_str (), GL_VERTEX_SHADER);
-	AddShader (ShaderProgram, fs.c_str (), GL_FRAGMENT_SHADER);
-
-	GLint Success = 0;
-	GLchar ErrorLog[1024] = { 0 };
-
-	glLinkProgram (ShaderProgram);
-	glGetProgramiv (ShaderProgram, GL_LINK_STATUS, &Success);
-	if (Success == 0) {
-		glGetProgramInfoLog (ShaderProgram, sizeof (ErrorLog), NULL, ErrorLog);
-		fprintf (stderr, "Error linking shader program: '%s'\n", ErrorLog);
-		exit (1);
-	}
-
-	glValidateProgram (ShaderProgram);
-	glGetProgramiv (ShaderProgram, GL_VALIDATE_STATUS, &Success);
-	if (!Success) {
-		glGetProgramInfoLog (ShaderProgram, sizeof (ErrorLog), NULL, ErrorLog);
-		fprintf (stderr, "Invalid shader program: '%s'\n", ErrorLog);
-		exit (1);
-	}
-
-	glUseProgram (ShaderProgram);
-
-	gWorldLocation = glGetUniformLocation (ShaderProgram, "gWorld");
-	assert (gWorldLocation != 0xFFFFFFFF);
+	glGenBuffers (1, &EBO);
+	glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, EBO);
+	glBufferData (GL_ELEMENT_ARRAY_BUFFER, sizeof (elements), elements, GL_STATIC_DRAW);
 }
 
 int main (int argc, char** argv)
 {
+	//Inicializar a janela
 	glutInit (&argc, argv);
 	glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowSize (1024, 768);
 	glutInitWindowPosition (100, 100);
-	glutCreateWindow ("Tutorial 05");
+	glutCreateWindow ("OPENGL TESTE");
 
+	//Inicializar as cenas
 	InitializeGlutCallbacks ();
 
-	// Must be done after glut is initialized!
+	//Precisa ser feito antes do glut ser inicializado
 	GLenum res = glewInit ();
 	if (res != GLEW_OK) {
 		fprintf (stderr, "Error: '%s'\n", glewGetErrorString (res));
@@ -203,13 +156,109 @@ int main (int argc, char** argv)
 
 	printf ("GL version: %s\n", glGetString (GL_VERSION));
 
+	glEnable (GL_DEPTH_TEST);
+
 	glClearColor (0.0f, 0.0f, 0.0f, 0.0f);
 
+	//Cria os vértices
 	CreateVertexBuffer ();
-	CreateIndexBuffer ();
+	//Cria o buffer de indices
+	//CreateIndexBuffer ();
+	
+	//Cria os shaders e texturas
+	// Shader sources
 
-	CompileShaders ();
+	const GLchar* vertexSource = R"glsl(
+											#version 150 core
+    in vec3 position;
+    in vec3 color;
+    in vec2 texcoord;
 
+    out vec3 Color;
+    out vec2 Texcoord;
+
+	uniform mat4 model;
+	uniform mat4 view;
+	uniform mat4 proj;
+
+    void main()
+    {
+        Color = color;
+        Texcoord = texcoord;
+        gl_Position = proj * view * model * vec4(position, 1.0);
+    }
+										)glsl";
+
+	const GLchar* fragmentSource = R"glsl(
+											#version 150 core
+    in vec3 Color;
+    in vec2 Texcoord;
+    out vec4 outColor;
+    uniform sampler2D tex;
+    void main()
+    {
+		if (Texcoord.y < 0.5)
+            outColor = texture(tex, Texcoord);
+        else
+            outColor = texture(tex, vec2(Texcoord.x, 1.0 - Texcoord.y));
+    }
+										)glsl";
+	
+	GLuint vertexShader = glCreateShader (GL_VERTEX_SHADER);
+	glShaderSource (vertexShader, 1, &vertexSource, NULL);
+	glCompileShader (vertexShader);
+
+	// Create and compile the fragment shader
+	GLuint fragmentShader = glCreateShader (GL_FRAGMENT_SHADER);
+	glShaderSource (fragmentShader, 1, &fragmentSource, NULL);
+	glCompileShader (fragmentShader);
+
+	// Link the vertex and fragment shader into a shader program
+	GLuint shaderProgram = glCreateProgram ();
+	glAttachShader (shaderProgram, vertexShader);
+	glAttachShader (shaderProgram, fragmentShader);
+	glBindFragDataLocation (shaderProgram, 0, "outColor");
+	glLinkProgram (shaderProgram);
+	glUseProgram (shaderProgram);
+
+	// Specify the layout of the vertex data
+	GLint posAttrib = glGetAttribLocation (shaderProgram, "position");
+	glEnableVertexAttribArray (posAttrib);
+	glVertexAttribPointer (posAttrib, 3, GL_FLOAT, GL_FALSE, 8 * sizeof (GLfloat), 0);
+
+	GLint colAttrib = glGetAttribLocation (shaderProgram, "color");
+	glEnableVertexAttribArray (colAttrib);
+	glVertexAttribPointer (colAttrib, 3, GL_FLOAT, GL_FALSE, 8 * sizeof (GLfloat), (void*)(3 * sizeof (GLfloat)));
+
+	GLint texAttrib = glGetAttribLocation (shaderProgram, "texcoord");
+	glEnableVertexAttribArray (texAttrib);
+	glVertexAttribPointer (texAttrib, 2, GL_FLOAT, GL_FALSE, 8 * sizeof (GLfloat), (void*)(6 * sizeof (GLfloat)));
+
+
+	//CARREGAR Texturas
+	GLuint textures[1];
+	glGenTextures (1, textures);
+
+	int width, height;
+	unsigned char* image;
+
+	glActiveTexture (GL_TEXTURE0);
+	glBindTexture (GL_TEXTURE_2D, textures[0]);
+	image = SOIL_load_image ("sample.png", &width, &height, 0, SOIL_LOAD_RGB);
+	glTexImage2D (GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+	SOIL_free_image_data (image);
+	glUniform1i (glGetUniformLocation (shaderProgram, "texKitten"), 0);
+
+	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	model = glGetUniformLocation (shaderProgram, "model");
+	proj = glGetUniformLocation (shaderProgram, "proj");
+	view = glGetUniformLocation (shaderProgram, "view");
+
+	//Loop Principal
 	glutMainLoop ();
 
 	return 0;
