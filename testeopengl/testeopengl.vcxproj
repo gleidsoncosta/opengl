@@ -125,8 +125,8 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main3.cpp" />
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Busto.cpp" />
+    <ClCompile Include="Cube.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\ATB\AntTweakBar.h" />
